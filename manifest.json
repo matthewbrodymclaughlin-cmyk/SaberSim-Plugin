@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SaberSim DFS Build Optimizer",
-  "version": "1.0.0",
-  "description": "Optimize Daily Fantasy Sports lineups using SaberSim API across all sports and contests",
+  "name": "SaberSim DFS Build Optimizer Pro",
+  "version": "2.0.0",
+  "description": "Professional DFS optimizer with SaberSim integration, Vegas data scraping, advanced stacking, and sim diversity",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -21,11 +21,21 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting",
+    "tabs"
   ],
   "host_permissions": [
     "https://api.sabersim.com/*",
-    "https://*.sabersim.com/*"
+    "https://*.sabersim.com/*",
+    "https://sportsbook.draftkings.com/*",
+    "https://sportsbook.fanduel.com/*",
+    "https://app.prizepicks.com/*",
+    "https://underdogfantasy.com/*",
+    "https://*.draftkings.com/*",
+    "https://*.fanduel.com/*",
+    "https://*.prizepicks.com/*",
+    "https://*.underdogfantasy.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
