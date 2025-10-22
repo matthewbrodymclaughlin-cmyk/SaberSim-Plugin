@@ -1,0 +1,26 @@
+Position,Name,ID,Salary,AvgPointsPerGame
+QB,Patrick Mahomes,12345,8500,24.5
+QB,Josh Allen,12346,8200,23.8
+QB,Jalen Hurts,12347,7800,22.1
+RB,Christian McCaffrey,22345,9000,22.1
+RB,Bijan Robinson,22346,7500,16.5
+RB,Derrick Henry,22347,7800,18.2
+RB,Jahmyr Gibbs,22348,6800,15.8
+RB,Rhamondre Stevenson,22349,6200,13.5
+RB,Isiah Pacheco,22350,5800,12.8
+WR,Tyreek Hill,32345,8200,19.2
+WR,Justin Jefferson,32346,8000,18.5
+WR,CeeDee Lamb,32347,7800,17.9
+WR,Rashee Rice,32348,5800,14.2
+WR,Davante Adams,32349,6800,15.1
+WR,AJ Brown,32350,7400,16.8
+WR,DeVonta Smith,32351,6400,14.5
+WR,Amon-Ra St. Brown,32352,7600,17.2
+TE,Travis Kelce,42345,7200,17.8
+TE,Mark Andrews,42346,6400,14.5
+TE,Sam LaPorta,42347,5200,12.8
+TE,George Kittle,42348,5800,13.5
+DST,San Francisco,52345,3600,8.5
+DST,Kansas City,52346,3400,7.8
+DST,Detroit,52347,3200,7.2
+DST,Buffalo,52348,3000,6.5
