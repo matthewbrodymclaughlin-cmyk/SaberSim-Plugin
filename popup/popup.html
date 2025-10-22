@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaberSim DFS Optimizer</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SaberSim DFS Optimizer</h1>
+            <p class="subtitle">Optimize your DFS lineups with AI-powered analytics</p>
+        </header>
+
+        <!-- API Configuration Section -->
+        <section id="config-section" class="section">
+            <h2>API Configuration</h2>
+            <div class="form-group">
+                <label for="api-key">SaberSim API Key:</label>
+                <input type="password" id="api-key" placeholder="Enter your API key">
+                <button id="save-api-key" class="btn btn-primary">Save Key</button>
+            </div>
+            <div id="api-status" class="status-message"></div>
+        </section>
+
+        <!-- Sport & Contest Selection -->
+        <section id="selection-section" class="section">
+            <h2>Contest Setup</h2>
+
+            <div class="form-group">
+                <label for="sport-select">Sport:</label>
+                <select id="sport-select">
+                    <option value="">Select a sport...</option>
+                    <option value="nfl">NFL</option>
+                    <option value="nba">NBA</option>
+                    <option value="mlb">MLB</option>
+                    <option value="nhl">NHL</option>
+                    <option value="pga">PGA</option>
+                    <option value="soccer">Soccer</option>
+                    <option value="nascar">NASCAR</option>
+                    <option value="mma">MMA</option>
+                    <option value="cbb">College Basketball</option>
+                    <option value="cfb">College Football</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="contest-type">Contest Type:</label>
+                <select id="contest-type">
+                    <option value="">Select contest type...</option>
+                    <option value="classic">Classic</option>
+                    <option value="showdown">Showdown/Single Game</option>
+                    <option value="tiers">Tiers</option>
+                    <option value="best-ball">Best Ball</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="site-select">DFS Site:</label>
+                <select id="site-select">
+                    <option value="">Select site...</option>
+                    <option value="draftkings">DraftKings</option>
+                    <option value="fanduel">FanDuel</option>
+                    <option value="yahoo">Yahoo</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Build Parameters -->
+        <section id="build-params-section" class="section">
+            <h2>Build Parameters</h2>
+
+            <div class="form-group">
+                <label for="salary-cap">Salary Cap:</label>
+                <input type="number" id="salary-cap" placeholder="50000" value="50000">
+            </div>
+
+            <div class="form-group">
+                <label for="num-lineups">Number of Lineups:</label>
+                <input type="number" id="num-lineups" placeholder="1" value="1" min="1" max="150">
+            </div>
+
+            <div class="form-group">
+                <label for="max-exposure">Max Player Exposure (%):</label>
+                <input type="number" id="max-exposure" placeholder="100" value="100" min="0" max="100">
+            </div>
+
+            <div class="form-group">
+                <label for="min-exposure">Min Player Exposure (%):</label>
+                <input type="number" id="min-exposure" placeholder="0" value="0" min="0" max="100">
+            </div>
+
+            <div class="form-group">
+                <label for="min-salary">Minimum Salary Usage:</label>
+                <input type="number" id="min-salary" placeholder="49000" value="49000">
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="randomness">
+                    Use Randomness
+                </label>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="stacking">
+                    Enable Team Stacking
+                </label>
+            </div>
+
+            <div class="form-group" id="stack-size-group" style="display: none;">
+                <label for="stack-size">Stack Size:</label>
+                <input type="number" id="stack-size" placeholder="3" value="3" min="2" max="5">
+            </div>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="action-section">
+            <button id="optimize-btn" class="btn btn-success btn-large">
+                Optimize Lineups
+            </button>
+            <button id="reset-btn" class="btn btn-secondary">
+                Reset
+            </button>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Optimizing your lineups...</p>
+        </div>
+
+        <!-- Results Section -->
+        <section id="results-section" class="section" style="display: none;">
+            <h2>Optimized Lineups</h2>
+            <div id="results-container"></div>
+            <button id="export-csv" class="btn btn-primary">Export to CSV</button>
+            <button id="copy-results" class="btn btn-secondary">Copy to Clipboard</button>
+        </section>
+
+        <!-- Error Messages -->
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
+        <footer>
+            <p class="footer-text">Powered by SaberSim API</p>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+{
+  "api": {
+    "baseUrl": "https://api.sabersim.com",
+    "apiKey": "YOUR_SABERSIM_API_KEY_HERE",
+    "timeout": 60000,
+    "endpoints": {
+      "optimize": "/v1/optimize",
+      "projections": "/v1/projections",
+      "contests": "/v1/contests",
+      "validate": "/v1/validate",
+      "playerPool": "/v1/players",
+      "ownership": "/v1/ownership"
+    }
+  },
+  "defaults": {
+    "sport": "nfl",
+    "contestType": "classic",
+    "site": "draftkings",
+    "salaryCap": 50000,
+    "numLineups": 1,
+    "maxExposure": 100,
+    "minExposure": 0,
+    "minSalary": 49000,
+    "randomness": false,
+    "stacking": false,
+    "stackSize": 3
+  },
+  "sports": {
+    "nfl": {
+      "name": "NFL",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "DST"],
+        "showdown": ["CPT", "FLEX", "FLEX", "FLEX", "FLEX", "FLEX"]
+      }
+    },
+    "nba": {
+      "name": "NBA",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"],
+        "showdown": ["CPT", "FLEX", "FLEX", "FLEX", "FLEX", "FLEX"]
+      }
+    },
+    "mlb": {
+      "name": "MLB",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["P", "P", "C", "1B", "2B", "3B", "SS", "OF", "OF", "OF"],
+        "showdown": ["CPT", "FLEX", "FLEX", "FLEX", "FLEX", "FLEX"]
+      }
+    },
+    "nhl": {
+      "name": "NHL",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["C", "C", "W", "W", "W", "D", "D", "G", "UTIL"],
+        "showdown": ["CPT", "FLEX", "FLEX", "FLEX", "FLEX", "FLEX"]
+      }
+    },
+    "pga": {
+      "name": "PGA",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["G", "G", "G", "G", "G", "G"]
+      }
+    },
+    "soccer": {
+      "name": "Soccer",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["F", "F", "M", "M", "D", "D", "GK", "UTIL"],
+        "showdown": ["CPT", "FLEX", "FLEX", "FLEX", "FLEX", "FLEX"]
+      }
+    },
+    "nascar": {
+      "name": "NASCAR",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["D", "D", "D", "D", "D", "D"]
+      }
+    },
+    "mma": {
+      "name": "MMA",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["F", "F", "F", "F", "F", "F"]
+      }
+    },
+    "cbb": {
+      "name": "College Basketball",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
+      }
+    },
+    "cfb": {
+      "name": "College Football",
+      "defaultSalaryCap": 50000,
+      "positions": {
+        "classic": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "DST"]
+      }
+    }
+  },
+  "sites": {
+    "draftkings": {
+      "name": "DraftKings",
+      "defaultSalaryCap": 50000
+    },
+    "fanduel": {
+      "name": "FanDuel",
+      "defaultSalaryCap": 60000
+    },
+    "yahoo": {
+      "name": "Yahoo",
+      "defaultSalaryCap": 200
+    }
+  },
+  "optimization": {
+    "maxLineups": 150,
+    "minLineups": 1,
+    "maxExposure": 100,
+    "minExposure": 0,
+    "maxStackSize": 5,
+    "minStackSize": 2,
+    "defaultStackSize": 3
+  },
+  "ui": {
+    "theme": "light",
+    "showAdvancedOptions": true,
+    "autoSaveSettings": true,
+    "confirmBeforeOptimize": false
+  },
+  "features": {
+    "enableStacking": true,
+    "enableRandomness": true,
+    "enablePlayerLocks": false,
+    "enablePlayerExcludes": false,
+    "enableOwnershipProjections": false,
+    "enableContestImport": false
+  },
+  "cache": {
+    "enabled": true,
+    "projectionsExpiry": 3600,
+    "contestsExpiry": 1800
+  }
+}
