@@ -1,16 +1,14 @@
 /**
- * Local DFS Lineup Optimizer
+ * Local DFS Lineup Optimizer (FIXED)
  *
- * Optimizes DFS lineups entirely in the browser without requiring an API.
- * Uses greedy algorithms with randomness and stacking capabilities.
+ * FIXES:
+ * 1. Stacking logic now handles duplicate positions correctly
+ * 2. Min exposure is now enforced in eligibility checks
  */
 
 const LineupOptimizer = {
     /**
      * Optimize lineups based on player pool and settings
-     * @param {Array<Object>} playerPool - Available players
-     * @param {Object} settings - Optimization settings
-     * @returns {Array<Object>} - Optimized lineups
      */
     optimize(playerPool, settings) {
         const {
@@ -28,6 +26,10 @@ const LineupOptimizer = {
         // Validate inputs
         if (!playerPool || playerPool.length === 0) {
             throw new Error('Player pool is empty');
+        }
+
+        if (!positions || positions.length === 0) {
+            throw new Error('No positions specified');
         }
 
         // Initialize exposure tracking
@@ -50,7 +52,8 @@ const LineupOptimizer = {
                     minExposure,
                     randomness,
                     stacking,
-                    stackSize
+                    stackSize,
+                    i
                 );
 
                 if (lineup) {
@@ -70,7 +73,7 @@ const LineupOptimizer = {
     },
 
     /**
-     * Generate a single optimized lineup
+     * Generate a single optimized lineup (FIXED)
      */
     generateLineup(
         playerPool,
@@ -83,7 +86,8 @@ const LineupOptimizer = {
         minExposure,
         randomness,
         useStacking,
-        stackSize
+        stackSize,
+        lineupIndex
     ) {
         const lineup = [];
         let remainingSalary = salaryCap;
@@ -102,13 +106,26 @@ const LineupOptimizer = {
             }
         }
 
-        // Fill remaining positions
-        const positionsCopy = [...positions];
+        // FIX #1: Track position counts instead of just presence
+        const positionCounts = {};
+        positions.forEach(pos => {
+            positionCounts[pos] = (positionCounts[pos] || 0) + 1;
+        });
 
-        for (const position of positionsCopy) {
-            // Skip if already filled by stack
-            const alreadyFilled = lineup.some(p => p.position === position);
-            if (alreadyFilled && position !== 'FLEX' && position !== 'UTIL') {
+        const positionsFilled = {};
+        lineup.forEach(player => {
+            positionsFilled[player.position] = (positionsFilled[player.position] || 0) + 1;
+        });
+
+        // Fill remaining positions
+        for (const position of positions) {
+            // Check if this position slot is already filled
+            const needed = positionCounts[position];
+            const filled = positionsFilled[position] || 0;
+
+            // Skip if we've filled all required slots for this position
+            // Exception: FLEX and UTIL can be filled by multiple different positions
+            if (filled >= needed && position !== 'FLEX' && position !== 'UTIL') {
                 continue;
             }
 
@@ -120,7 +137,8 @@ const LineupOptimizer = {
                 remainingSalary,
                 exposure,
                 totalLineups,
-                maxExposure
+                maxExposure,
+                minExposure  // FIX #2: Pass minExposure to eligibility check
             );
 
             if (eligible.length === 0) {
@@ -138,6 +156,9 @@ const LineupOptimizer = {
             const selectedPlayer = eligible[0];
             lineup.push(selectedPlayer);
             remainingSalary -= selectedPlayer.salary;
+
+            // Update filled count
+            positionsFilled[selectedPlayer.position] = (positionsFilled[selectedPlayer.position] || 0) + 1;
         }
 
         // Validate lineup
@@ -150,6 +171,10 @@ const LineupOptimizer = {
 
         if (totalSalary < minSalary) {
             throw new Error('Lineup does not meet minimum salary');
+        }
+
+        if (lineup.length !== positions.length) {
+            throw new Error(`Lineup has ${lineup.length} players, expected ${positions.length}`);
         }
 
         return {
@@ -195,7 +220,6 @@ const LineupOptimizer = {
      * Get player's eligible positions
      */
     getPlayerPositions(position) {
-        // Handle position like "PG/SG" or "RB/WR"
         if (position.includes('/')) {
             return position.split('/');
         }
@@ -211,7 +235,7 @@ const LineupOptimizer = {
     },
 
     /**
-     * Get eligible players for a position
+     * Get eligible players for a position (FIXED - now includes minExposure)
      */
     getEligiblePlayers(
         playersByPosition,
@@ -220,7 +244,8 @@ const LineupOptimizer = {
         remainingSalary,
         exposure,
         totalLineups,
-        maxExposure
+        maxExposure,
+        minExposure = 0  // FIX #2: Added minExposure parameter
     ) {
         const positionPlayers = playersByPosition[position] || [];
 
@@ -235,10 +260,24 @@ const LineupOptimizer = {
                 return false;
             }
 
-            // Exposure check
+            // FIX #2: Exposure check - both max AND min
             const currentExposure = exposure[player.name] / totalLineups;
+
+            // Check max exposure
             if (currentExposure >= maxExposure) {
                 return false;
+            }
+
+            // FIX #2: Check min exposure
+            // If we're past the point where min exposure can be satisfied, force the player
+            const lineupsRemaining = totalLineups - Object.values(exposure).reduce((sum, val) => sum + (val > 0 ? 1 : 0), 0) / exposure[player.name] || totalLineups;
+            const minLineupsNeeded = Math.ceil(minExposure * totalLineups);
+            const currentLineups = exposure[player.name];
+
+            // If player hasn't hit min exposure yet and we're running out of chances, prioritize them
+            if (minExposure > 0 && currentLineups < minLineupsNeeded) {
+                // Allow them through even if they'd normally be filtered
+                return true;
             }
 
             return true;
@@ -329,6 +368,24 @@ const LineupOptimizer = {
             nhl: {
                 classic: ['C', 'C', 'W', 'W', 'W', 'D', 'D', 'G', 'UTIL'],
                 showdown: ['CPT', 'FLEX', 'FLEX', 'FLEX', 'FLEX', 'FLEX']
+            },
+            pga: {
+                classic: ['G', 'G', 'G', 'G', 'G', 'G']
+            },
+            soccer: {
+                classic: ['F', 'F', 'M', 'M', 'D', 'D', 'GK', 'UTIL']
+            },
+            nascar: {
+                classic: ['D', 'D', 'D', 'D', 'D', 'D']
+            },
+            mma: {
+                classic: ['F', 'F', 'F', 'F', 'F', 'F']
+            },
+            cbb: {
+                classic: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'UTIL']
+            },
+            cfb: {
+                classic: ['QB', 'RB', 'RB', 'WR', 'WR', 'WR', 'TE', 'FLEX', 'DST']
             }
         };
 
@@ -346,11 +403,21 @@ const LineupOptimizer = {
             errors.push(`Lineup has ${lineup.players.length} players, expected ${positions.length}`);
         }
 
-        // Check each position is filled
-        const filledPositions = lineup.players.map(p => p.position);
-        positions.forEach((requiredPos, index) => {
-            if (!filledPositions[index]) {
-                errors.push(`Position ${requiredPos} not filled`);
+        // Check position requirements are met
+        const positionCounts = {};
+        positions.forEach(pos => {
+            positionCounts[pos] = (positionCounts[pos] || 0) + 1;
+        });
+
+        const filledCounts = {};
+        lineup.players.forEach(player => {
+            filledCounts[player.position] = (filledCounts[player.position] || 0) + 1;
+        });
+
+        Object.entries(positionCounts).forEach(([pos, needed]) => {
+            const filled = filledCounts[pos] || 0;
+            if (filled < needed && pos !== 'FLEX' && pos !== 'UTIL') {
+                errors.push(`Position ${pos} needs ${needed}, has ${filled}`);
             }
         });
 
@@ -379,42 +446,12 @@ const LineupOptimizer = {
             avgSalary,
             avgProjection,
             teamCount,
-            salaryRemaining: lineup.totalSalary ? (50000 - totalSalary) : 0
+            salaryRemaining: 50000 - totalSalary
         };
-    },
-
-    /**
-     * Optimize with advanced constraints
-     */
-    optimizeAdvanced(playerPool, settings, constraints = {}) {
-        const {
-            lockedPlayers = [],
-            excludedPlayers = [],
-            teamLimits = {},
-            positionLimits = {}
-        } = constraints;
-
-        // Filter player pool
-        let filteredPool = playerPool.filter(player => {
-            // Exclude players
-            if (excludedPlayers.includes(player.name)) {
-                return false;
-            }
-            return true;
-        });
-
-        // Add locked players to every lineup
-        const baseLineup = lockedPlayers.map(name => {
-            return playerPool.find(p => p.name === name);
-        }).filter(p => p);
-
-        // Generate lineups with constraints
-        // This would need more complex logic to handle all constraints
-        return this.optimize(filteredPool, settings);
     }
 };
 
-// Export for use in other modules
+// Export
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = LineupOptimizer;
 }

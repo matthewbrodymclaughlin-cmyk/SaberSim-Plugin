@@ -1,19 +1,31 @@
 /**
- * SaberSim DFS Build Optimizer - Popup Script
+ * SaberSim DFS Build Optimizer - Popup Script (FIXED)
  *
  * This script manages the Chrome extension popup UI and handles:
- * - API key configuration and storage
- * - User input for sport, contest, and build parameters
- * - Communication with SaberSim API via background service worker
- * - Display of optimized lineup results
- * - Export functionality for lineup data
+ * - CSV import mode (no API required)
+ * - API mode (SaberSim integration)
+ * - Local optimization with proper stacking
+ * - Min/max exposure enforcement
  */
 
 // DOM Elements
 const elements = {
+    // Mode selection
+    modeApi: document.getElementById('mode-api'),
+    modeCsv: document.getElementById('mode-csv'),
+
+    // API section
+    configSection: document.getElementById('config-section'),
     apiKey: document.getElementById('api-key'),
     saveApiKey: document.getElementById('save-api-key'),
     apiStatus: document.getElementById('api-status'),
+
+    // CSV section
+    csvSection: document.getElementById('csv-section'),
+    playerPoolFile: document.getElementById('player-pool-file'),
+    importPlayers: document.getElementById('import-players'),
+    importStatus: document.getElementById('import-status'),
+    playerCount: document.getElementById('player-count'),
 
     sportSelect: document.getElementById('sport-select'),
     contestType: document.getElementById('contest-type'),
@@ -41,6 +53,8 @@ const elements = {
 
 // Application State
 let currentResults = null;
+let currentPlayerPool = null;
+let currentMode = 'csv'; // Default to CSV mode
 
 /**
  * Initialize the popup when DOM is loaded
@@ -48,6 +62,7 @@ let currentResults = null;
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSavedSettings();
     attachEventListeners();
+    updateModeUI(); // Set initial mode UI state
 });
 
 /**
@@ -56,7 +71,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadSavedSettings() {
     try {
         const data = await chrome.storage.local.get([
+            'mode',
             'apiKey',
+            'playerPool',
             'sport',
             'contestType',
             'site',
@@ -70,10 +87,26 @@ async function loadSavedSettings() {
             'stackSize'
         ]);
 
-        // Restore API key status (but not the key itself for security)
+        // Restore mode
+        if (data.mode) {
+            currentMode = data.mode;
+            if (currentMode === 'api') {
+                elements.modeApi.checked = true;
+            } else {
+                elements.modeCsv.checked = true;
+            }
+        }
+
+        // Restore API key status
         if (data.apiKey) {
-            showStatus('API key is configured', 'success');
+            showApiStatus('API key is configured', 'success');
             elements.apiKey.placeholder = '********** (saved)';
+        }
+
+        // Restore player pool
+        if (data.playerPool) {
+            currentPlayerPool = data.playerPool;
+            showImportStatus(`${currentPlayerPool.length} players loaded from storage`, 'success');
         }
 
         // Restore form values
@@ -102,11 +135,19 @@ async function loadSavedSettings() {
  * Attach event listeners to UI elements
  */
 function attachEventListeners() {
+    // Mode toggle
+    elements.modeApi.addEventListener('change', handleModeChange);
+    elements.modeCsv.addEventListener('change', handleModeChange);
+
     // API Key management
     elements.saveApiKey.addEventListener('click', saveApiKey);
     elements.apiKey.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') saveApiKey();
     });
+
+    // CSV Import
+    elements.importPlayers.addEventListener('click', importPlayerPool);
+    elements.playerPoolFile.addEventListener('change', handleFileSelected);
 
     // Stacking toggle
     elements.stacking.addEventListener('change', (e) => {
@@ -129,7 +170,7 @@ function attachEventListeners() {
     ];
 
     formElements.forEach(el => {
-        el.addEventListener('change', saveFormSettings);
+        if (el) el.addEventListener('change', saveFormSettings);
     });
 
     // Action buttons
@@ -140,23 +181,91 @@ function attachEventListeners() {
 }
 
 /**
+ * Handle mode change (API vs CSV)
+ */
+function handleModeChange() {
+    currentMode = elements.modeApi.checked ? 'api' : 'csv';
+    chrome.storage.local.set({ mode: currentMode });
+    updateModeUI();
+}
+
+/**
+ * Update UI based on selected mode
+ */
+function updateModeUI() {
+    if (currentMode === 'api') {
+        elements.configSection.style.display = 'block';
+        elements.csvSection.style.display = 'none';
+    } else {
+        elements.configSection.style.display = 'none';
+        elements.csvSection.style.display = 'block';
+    }
+}
+
+/**
+ * Handle file selected
+ */
+function handleFileSelected() {
+    const file = elements.playerPoolFile.files[0];
+    if (file) {
+        showImportStatus(`File selected: ${file.name}`, 'info');
+    }
+}
+
+/**
+ * Import player pool from CSV
+ */
+async function importPlayerPool() {
+    const file = elements.playerPoolFile.files[0];
+
+    if (!file) {
+        showImportStatus('Please select a CSV file', 'error');
+        return;
+    }
+
+    try {
+        showImportStatus('Importing...', 'info');
+
+        // Parse CSV file
+        const result = await CSVParser.parseFile(file);
+
+        // Auto-detect format and parse
+        const csvContent = await file.text();
+        const parsed = CSVParser.autoDetectAndParse(csvContent);
+
+        currentPlayerPool = parsed.players;
+
+        // Save to storage
+        await chrome.storage.local.set({ playerPool: currentPlayerPool });
+
+        showImportStatus(`✓ Imported ${currentPlayerPool.length} players from ${parsed.format}`, 'success');
+        elements.playerCount.textContent = `${currentPlayerPool.length} players ready`;
+        elements.playerCount.classList.add('visible');
+
+    } catch (error) {
+        console.error('Import error:', error);
+        showImportStatus(`Failed to import: ${error.message}`, 'error');
+    }
+}
+
+/**
  * Save API key to Chrome storage
  */
 async function saveApiKey() {
     const apiKey = elements.apiKey.value.trim();
 
     if (!apiKey) {
-        showStatus('Please enter an API key', 'error');
+        showApiStatus('Please enter an API key', 'error');
         return;
     }
 
     try {
         await chrome.storage.local.set({ apiKey });
-        showStatus('API key saved successfully!', 'success');
+        showApiStatus('API key saved successfully!', 'success');
         elements.apiKey.value = '';
         elements.apiKey.placeholder = '********** (saved)';
     } catch (error) {
-        showStatus('Failed to save API key: ' + error.message, 'error');
+        showApiStatus('Failed to save API key: ' + error.message, 'error');
     }
 }
 
@@ -223,7 +332,7 @@ function validateForm() {
 }
 
 /**
- * Optimize lineups by calling SaberSim API via background worker
+ * Optimize lineups - handles both API and CSV modes
  */
 async function optimizeLineups() {
     // Validate form
@@ -233,18 +342,89 @@ async function optimizeLineups() {
         return;
     }
 
-    // Check for API key
-    const { apiKey } = await chrome.storage.local.get('apiKey');
-    if (!apiKey) {
-        showError('Please configure your SaberSim API key first');
-        return;
-    }
-
     // Show loading state
     elements.loading.style.display = 'block';
     elements.resultsSection.style.display = 'none';
     elements.errorMessage.style.display = 'none';
     elements.optimizeBtn.disabled = true;
+
+    try {
+        let lineups;
+
+        if (currentMode === 'csv') {
+            // CSV Mode: Use local optimizer
+            lineups = await optimizeWithCSV();
+        } else {
+            // API Mode: Use SaberSim API
+            lineups = await optimizeWithAPI();
+        }
+
+        if (lineups && lineups.length > 0) {
+            currentResults = { lineups };
+            displayResults(currentResults);
+        } else {
+            throw new Error('No lineups generated');
+        }
+
+    } catch (error) {
+        console.error('Optimization error:', error);
+        showError('Optimization failed: ' + error.message);
+    } finally {
+        elements.loading.style.display = 'none';
+        elements.optimizeBtn.disabled = false;
+    }
+}
+
+/**
+ * Optimize using CSV mode (local optimizer)
+ */
+async function optimizeWithCSV() {
+    if (!currentPlayerPool || currentPlayerPool.length === 0) {
+        throw new Error('Please import a player pool CSV first');
+    }
+
+    // Get position requirements
+    const sport = elements.sportSelect.value;
+    const contestType = elements.contestType.value;
+    const positions = LineupOptimizer.getPositionRequirements(sport, contestType);
+
+    if (!positions || positions.length === 0) {
+        throw new Error('Invalid sport/contest type combination');
+    }
+
+    // Prepare settings
+    const settings = {
+        positions,
+        salaryCap: parseInt(elements.salaryCap.value),
+        minSalary: parseInt(elements.minSalary.value),
+        numLineups: parseInt(elements.numLineups.value),
+        maxExposure: parseInt(elements.maxExposure.value) / 100,
+        minExposure: parseInt(elements.minExposure.value) / 100,
+        randomness: elements.randomness.checked,
+        stacking: elements.stacking.checked,
+        stackSize: elements.stacking.checked ? parseInt(elements.stackSize.value) : 0
+    };
+
+    console.log('Optimizing with settings:', settings);
+    console.log('Player pool size:', currentPlayerPool.length);
+
+    // Run optimization
+    const lineups = LineupOptimizer.optimize(currentPlayerPool, settings);
+
+    console.log('Generated lineups:', lineups.length);
+
+    return lineups;
+}
+
+/**
+ * Optimize using API mode (SaberSim)
+ */
+async function optimizeWithAPI() {
+    // Check for API key
+    const { apiKey } = await chrome.storage.local.get('apiKey');
+    if (!apiKey) {
+        throw new Error('Please configure your SaberSim API key first');
+    }
 
     // Prepare request parameters
     const params = {
@@ -261,26 +441,17 @@ async function optimizeLineups() {
         stackSize: elements.stacking.checked ? parseInt(elements.stackSize.value) : null
     };
 
-    try {
-        // Send message to background worker
-        const response = await chrome.runtime.sendMessage({
-            action: 'optimizeLineups',
-            params: params,
-            apiKey: apiKey
-        });
+    // Send message to background worker
+    const response = await chrome.runtime.sendMessage({
+        action: 'optimizeLineups',
+        params: params,
+        apiKey: apiKey
+    });
 
-        if (response.success) {
-            currentResults = response.data;
-            displayResults(response.data);
-        } else {
-            throw new Error(response.error || 'Optimization failed');
-        }
-    } catch (error) {
-        console.error('Optimization error:', error);
-        showError('Optimization failed: ' + error.message);
-    } finally {
-        elements.loading.style.display = 'none';
-        elements.optimizeBtn.disabled = false;
+    if (response.success) {
+        return response.data.lineups;
+    } else {
+        throw new Error(response.error || 'API optimization failed');
     }
 }
 
@@ -290,7 +461,6 @@ async function optimizeLineups() {
 function displayResults(data) {
     elements.resultsContainer.innerHTML = '';
 
-    // Check if data is in expected format
     if (!data || !data.lineups || data.lineups.length === 0) {
         showError('No lineups returned from optimization');
         return;
@@ -312,8 +482,8 @@ function createLineupCard(lineup, lineupNumber) {
     const card = document.createElement('div');
     card.className = 'lineup-card';
 
-    const totalSalary = lineup.players.reduce((sum, p) => sum + (p.salary || 0), 0);
-    const totalProjection = lineup.players.reduce((sum, p) => sum + (p.projection || 0), 0);
+    const totalSalary = lineup.totalSalary || lineup.players.reduce((sum, p) => sum + (p.salary || 0), 0);
+    const totalProjection = lineup.totalProjection || lineup.players.reduce((sum, p) => sum + (p.projection || 0), 0);
 
     card.innerHTML = `
         <div class="lineup-header">
@@ -353,7 +523,7 @@ function exportToCSV() {
         return;
     }
 
-    const csv = convertToCSV(currentResults.lineups);
+    const csv = CSVParser.generateDraftKingsCSV(currentResults.lineups);
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
 
@@ -365,36 +535,7 @@ function exportToCSV() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showStatus('Lineups exported successfully!', 'success');
-}
-
-/**
- * Convert lineup data to CSV format
- */
-function convertToCSV(lineups) {
-    // Get all unique positions
-    const positions = lineups[0]?.players.map(p => p.position) || [];
-
-    // Create header row
-    const headers = ['Lineup', ...positions, 'Total Salary', 'Total Projection'];
-    let csv = headers.join(',') + '\n';
-
-    // Add data rows
-    lineups.forEach((lineup, index) => {
-        const totalSalary = lineup.players.reduce((sum, p) => sum + (p.salary || 0), 0);
-        const totalProjection = lineup.players.reduce((sum, p) => sum + (p.projection || 0), 0);
-
-        const row = [
-            index + 1,
-            ...lineup.players.map(p => `"${p.name}"`),
-            totalSalary,
-            totalProjection.toFixed(2)
-        ];
-
-        csv += row.join(',') + '\n';
-    });
-
-    return csv;
+    showApiStatus('Lineups exported successfully!', 'success');
 }
 
 /**
@@ -410,7 +551,7 @@ async function copyToClipboard() {
 
     try {
         await navigator.clipboard.writeText(text);
-        showStatus('Results copied to clipboard!', 'success');
+        showApiStatus('Results copied to clipboard!', 'success');
     } catch (error) {
         showError('Failed to copy to clipboard: ' + error.message);
     }
@@ -424,8 +565,8 @@ function formatResultsAsText(lineups) {
     text += '='.repeat(50) + '\n\n';
 
     lineups.forEach((lineup, index) => {
-        const totalSalary = lineup.players.reduce((sum, p) => sum + (p.salary || 0), 0);
-        const totalProjection = lineup.players.reduce((sum, p) => sum + (p.projection || 0), 0);
+        const totalSalary = lineup.totalSalary || lineup.players.reduce((sum, p) => sum + (p.salary || 0), 0);
+        const totalProjection = lineup.totalProjection || lineup.players.reduce((sum, p) => sum + (p.projection || 0), 0);
 
         text += `Lineup ${index + 1}\n`;
         text += `-`.repeat(50) + '\n';
@@ -462,20 +603,38 @@ function resetForm() {
     elements.errorMessage.style.display = 'none';
 
     currentResults = null;
+    currentPlayerPool = null;
+
     saveFormSettings();
 }
 
 /**
  * Show status message in the API status area
  */
-function showStatus(message, type = 'info') {
+function showApiStatus(message, type = 'info') {
+    if (!elements.apiStatus) return;
     elements.apiStatus.textContent = message;
     elements.apiStatus.className = `status-message ${type}`;
     elements.apiStatus.style.display = 'block';
 
-    // Auto-hide after 5 seconds
     setTimeout(() => {
-        elements.apiStatus.style.display = 'none';
+        if (elements.apiStatus) elements.apiStatus.style.display = 'none';
+    }, 5000);
+}
+
+/**
+ * Show status in CSV import area
+ */
+function showImportStatus(message, type = 'info') {
+    if (!elements.importStatus) return;
+    elements.importStatus.textContent = message;
+    elements.importStatus.className = `status-message ${type}`;
+    elements.importStatus.style.display = 'block';
+
+    setTimeout(() => {
+        if (elements.importStatus && type !== 'success') {
+            elements.importStatus.style.display = 'none';
+        }
     }, 5000);
 }
 
@@ -486,7 +645,6 @@ function showError(message) {
     elements.errorMessage.innerHTML = message;
     elements.errorMessage.style.display = 'block';
 
-    // Auto-hide after 10 seconds
     setTimeout(() => {
         elements.errorMessage.style.display = 'none';
     }, 10000);
